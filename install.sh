@@ -12,7 +12,7 @@ AGENT_BIN="ip-hijack-agent"
 DATA_DIR="/var/lib/ip-hijack"
 
 VERSION="1.0.0"
-BUILD="2026-03-12.8"
+BUILD="2026-03-12.9"
 
 BASE_URL="https://raw.githubusercontent.com/${REPO}/main/bin/v${VERSION}"
 
@@ -202,16 +202,15 @@ update() {
         return
     fi
 
+    local tmp_bin="${INSTALL_DIR}/${AGENT_BIN}.new"
+    download_bin "agent-${PLATFORM}" "${BASE_URL}/agent-${PLATFORM}" "$tmp_bin"
+
     local was_running=false
     if [ "$DETECTED_OS" = "linux" ] && systemctl is-active ip-hijack-agent &>/dev/null; then
         was_running=true
-        step "Stopping agent before update..."
+        step "Stopping agent..."
         systemctl stop ip-hijack-agent
-        info "Agent stopped"
     fi
-
-    local tmp_bin="${INSTALL_DIR}/${AGENT_BIN}.new"
-    download_bin "agent-${PLATFORM}" "${BASE_URL}/agent-${PLATFORM}" "$tmp_bin"
 
     mv -f "$tmp_bin" "${INSTALL_DIR}/${AGENT_BIN}"
     chmod +x "${INSTALL_DIR}/${AGENT_BIN}"
