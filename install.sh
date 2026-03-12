@@ -12,7 +12,7 @@ AGENT_BIN="ip-hijack-agent"
 DATA_DIR="/var/lib/ip-hijack"
 
 VERSION="1.0.1"
-BUILD="2026-03-12.10"
+BUILD="2026-03-12.11"
 
 BASE_URL="https://raw.githubusercontent.com/${REPO}/main/bin/v${VERSION}"
 
@@ -87,9 +87,96 @@ download_bin() {
     info "Installed to ${dest}"
 }
 
+# ─── Check & Install Dependencies ─────────────────────────────────
+setup_dependencies() {
+    if [ "$DETECTED_OS" != "linux" ]; then
+        warn "Dependency check skipped (non-Linux)"
+        return
+    fi
+
+    step "Checking dependencies..."
+
+    # Detect package manager
+    local PKG=""
+    if command -v apt-get &>/dev/null; then
+        PKG="apt"
+    elif command -v yum &>/dev/null; then
+        PKG="yum"
+    elif command -v dnf &>/dev/null; then
+        PKG="dnf"
+    elif command -v opkg &>/dev/null; then
+        PKG="opkg"
+    elif command -v apk &>/dev/null; then
+        PKG="apk"
+    fi
+
+    # 1) iptables
+    if command -v iptables &>/dev/null; then
+        info "iptables: $(iptables -V 2>/dev/null || echo 'installed')"
+    else
+        warn "iptables not found, installing..."
+        case "$PKG" in
+            apt)  apt-get update -qq && apt-get install -y -qq iptables ;;
+            yum)  yum install -y iptables ;;
+            dnf)  dnf install -y iptables ;;
+            opkg) opkg update && opkg install iptables ;;
+            apk)  apk add iptables ;;
+            *)    error "Cannot auto-install iptables. Please install it manually."; return ;;
+        esac
+        if command -v iptables &>/dev/null; then
+            info "iptables installed"
+        else
+            error "iptables installation failed. Please install manually."
+        fi
+    fi
+
+    # 2) conntrack
+    if command -v conntrack &>/dev/null; then
+        info "conntrack: installed"
+    else
+        warn "conntrack not found, installing..."
+        case "$PKG" in
+            apt)  apt-get install -y -qq conntrack ;;
+            yum)  yum install -y conntrack-tools ;;
+            dnf)  dnf install -y conntrack-tools ;;
+            opkg) opkg install conntrack ;;
+            apk)  apk add conntrack-tools ;;
+            *)    warn "Cannot auto-install conntrack. Connection tracking may be limited." ;;
+        esac
+        if command -v conntrack &>/dev/null; then
+            info "conntrack installed"
+        else
+            warn "conntrack not available. Agent will fall back to netstat for connection listing."
+        fi
+    fi
+
+    # 3) ip_forward
+    local fwd
+    fwd=$(cat /proc/sys/net/ipv4/ip_forward 2>/dev/null || echo "0")
+    if [ "$fwd" = "1" ]; then
+        info "ip_forward: enabled"
+    else
+        warn "ip_forward is disabled, enabling..."
+        echo 1 > /proc/sys/net/ipv4/ip_forward 2>/dev/null || true
+        if ! grep -q "^net.ipv4.ip_forward=1" /etc/sysctl.conf 2>/dev/null; then
+            echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+            sysctl -p &>/dev/null || true
+        fi
+        fwd=$(cat /proc/sys/net/ipv4/ip_forward 2>/dev/null || echo "0")
+        if [ "$fwd" = "1" ]; then
+            info "ip_forward enabled (persistent)"
+        else
+            error "Failed to enable ip_forward. Please run: echo 1 > /proc/sys/net/ipv4/ip_forward"
+        fi
+    fi
+
+    echo ""
+}
+
 # ─── Install Agent ────────────────────────────────────────────────
 install_agent() {
     step "Installing Agent (${PLATFORM})"
+    setup_dependencies
 
     local url="${BASE_URL}/agent-${PLATFORM}"
     download_bin "agent-${PLATFORM}" "$url" "${INSTALL_DIR}/${AGENT_BIN}"
