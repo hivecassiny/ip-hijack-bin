@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# IP Hijack Agent/Server — Interactive Installer
+# IP Hijack Agent — Interactive Installer
 # https://github.com/hivecassiny/ip-hijack-bin
 #
 set -e
@@ -10,7 +10,6 @@ BASE_URL="https://raw.githubusercontent.com/${REPO}/main/bin"
 INSTALL_DIR="/usr/local/bin"
 SERVICE_DIR="/etc/systemd/system"
 AGENT_BIN="ip-hijack-agent"
-SERVER_BIN="ip-hijack-server"
 DATA_DIR="/var/lib/ip-hijack"
 
 # ─── Colors ───────────────────────────────────────────────────────
@@ -21,7 +20,7 @@ print_banner() {
     echo ""
     echo -e "${CYAN}${BOLD}"
     echo "  ╔══════════════════════════════════════════╗"
-    echo "  ║       IP Hijack Manager Installer        ║"
+    echo "  ║        IP Hijack Agent Installer         ║"
     echo "  ║                  v1.0.0                   ║"
     echo "  ╚══════════════════════════════════════════╝"
     echo -e "${RESET}"
@@ -147,100 +146,30 @@ UNIT
     fi
 }
 
-# ─── Install Server ───────────────────────────────────────────────
-install_server() {
-    step "Installing Server (${PLATFORM})"
-
-    if [ "$DETECTED_ARCH" = "mips" ] || [ "$DETECTED_ARCH" = "mipsle" ]; then
-        error "Server binary is not available for ${PLATFORM} (SQLite limitation)"
-        exit 1
-    fi
-
-    local url="${BASE_URL}/server-${PLATFORM}"
-    download_bin "server-${PLATFORM}" "$url" "${INSTALL_DIR}/${SERVER_BIN}"
-
-    prompt "TCP listen address [:9000]: "
-    read -r TCP_ADDR
-    TCP_ADDR="${TCP_ADDR:-:9000}"
-
-    prompt "HTTP listen address [:8080]: "
-    read -r HTTP_ADDR
-    HTTP_ADDR="${HTTP_ADDR:-:8080}"
-
-    prompt "Admin password [admin]: "
-    read -r ADMIN_PASS
-    ADMIN_PASS="${ADMIN_PASS:-admin}"
-
-    prompt "Database path [/var/lib/ip-hijack/hijack.db]: "
-    read -r DB_PATH
-    DB_PATH="${DB_PATH:-/var/lib/ip-hijack/hijack.db}"
-
-    mkdir -p "$(dirname "$DB_PATH")"
-
-    if [ "$DETECTED_OS" = "linux" ] && command -v systemctl &>/dev/null; then
-        step "Creating systemd service..."
-        cat > "${SERVICE_DIR}/ip-hijack-server.service" <<UNIT
-[Unit]
-Description=IP Hijack Management Server
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=${INSTALL_DIR}/${SERVER_BIN} -tcp ${TCP_ADDR} -http ${HTTP_ADDR} -db ${DB_PATH} -admin-pass ${ADMIN_PASS}
-Restart=always
-RestartSec=5
-LimitNOFILE=65535
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-        systemctl daemon-reload
-        systemctl enable ip-hijack-server
-        systemctl start ip-hijack-server
-        info "Service created and started"
-        echo ""
-        echo -e "  ${DIM}Web UI:${RESET} http://<server-ip>${HTTP_ADDR}"
-        echo -e "  ${DIM}Manage with:${RESET}"
-        echo -e "    systemctl status  ip-hijack-server"
-        echo -e "    systemctl restart ip-hijack-server"
-        echo -e "    journalctl -u ip-hijack-server -f"
-    else
-        echo ""
-        info "Run manually:"
-        echo -e "    ${SERVER_BIN} -tcp ${TCP_ADDR} -http ${HTTP_ADDR} -db ${DB_PATH} -admin-pass ${ADMIN_PASS}"
-    fi
-}
-
 # ─── Uninstall ────────────────────────────────────────────────────
 uninstall() {
-    step "Uninstalling IP Hijack..."
+    step "Uninstalling IP Hijack Agent..."
 
     if [ "$DETECTED_OS" = "linux" ] && command -v systemctl &>/dev/null; then
-        for svc in ip-hijack-agent ip-hijack-server; do
-            if systemctl is-active "$svc" &>/dev/null; then
-                systemctl stop "$svc"
-                info "Stopped ${svc}"
-            fi
-            if [ -f "${SERVICE_DIR}/${svc}.service" ]; then
-                systemctl disable "$svc" 2>/dev/null || true
-                rm -f "${SERVICE_DIR}/${svc}.service"
-                info "Removed ${svc} service"
-            fi
-        done
+        if systemctl is-active ip-hijack-agent &>/dev/null; then
+            systemctl stop ip-hijack-agent
+            info "Stopped ip-hijack-agent"
+        fi
+        if [ -f "${SERVICE_DIR}/ip-hijack-agent.service" ]; then
+            systemctl disable ip-hijack-agent 2>/dev/null || true
+            rm -f "${SERVICE_DIR}/ip-hijack-agent.service"
+            info "Removed ip-hijack-agent service"
+        fi
         systemctl daemon-reload
     fi
 
-    for f in "${INSTALL_DIR}/${AGENT_BIN}" "${INSTALL_DIR}/${SERVER_BIN}"; do
-        if [ -f "$f" ]; then
-            rm -f "$f"
-            info "Removed ${f}"
-        fi
-    done
+    if [ -f "${INSTALL_DIR}/${AGENT_BIN}" ]; then
+        rm -f "${INSTALL_DIR}/${AGENT_BIN}"
+        info "Removed ${INSTALL_DIR}/${AGENT_BIN}"
+    fi
 
     echo ""
-    prompt "Also remove data (UUID, database) in ${DATA_DIR}? [y/N]: "
+    prompt "Also remove data (UUID) in ${DATA_DIR}? [y/N]: "
     read -r RM_DATA
     if [[ "$RM_DATA" =~ ^[yY] ]]; then
         rm -rf "$DATA_DIR"
@@ -254,35 +183,23 @@ uninstall() {
 
 # ─── Update ───────────────────────────────────────────────────────
 update() {
-    step "Updating binaries..."
+    step "Updating Agent..."
 
-    local updated=0
-    if [ -f "${INSTALL_DIR}/${AGENT_BIN}" ]; then
-        download_bin "agent-${PLATFORM}" "${BASE_URL}/agent-${PLATFORM}" "${INSTALL_DIR}/${AGENT_BIN}"
-        if [ "$DETECTED_OS" = "linux" ] && systemctl is-active ip-hijack-agent &>/dev/null; then
-            systemctl restart ip-hijack-agent
-            info "Restarted ip-hijack-agent"
-        fi
-        updated=1
+    if [ ! -f "${INSTALL_DIR}/${AGENT_BIN}" ]; then
+        warn "Agent is not installed. Run install first."
+        return
     fi
 
-    if [ -f "${INSTALL_DIR}/${SERVER_BIN}" ]; then
-        download_bin "server-${PLATFORM}" "${BASE_URL}/server-${PLATFORM}" "${INSTALL_DIR}/${SERVER_BIN}"
-        if [ "$DETECTED_OS" = "linux" ] && systemctl is-active ip-hijack-server &>/dev/null; then
-            systemctl restart ip-hijack-server
-            info "Restarted ip-hijack-server"
-        fi
-        updated=1
-    fi
-
-    if [ "$updated" -eq 0 ]; then
-        warn "No installed components found. Run install first."
+    download_bin "agent-${PLATFORM}" "${BASE_URL}/agent-${PLATFORM}" "${INSTALL_DIR}/${AGENT_BIN}"
+    if [ "$DETECTED_OS" = "linux" ] && systemctl is-active ip-hijack-agent &>/dev/null; then
+        systemctl restart ip-hijack-agent
+        info "Restarted ip-hijack-agent"
     fi
 }
 
 # ─── Status ───────────────────────────────────────────────────────
 show_status() {
-    step "Component Status"
+    step "Agent Status"
     echo ""
 
     if [ -f "${INSTALL_DIR}/${AGENT_BIN}" ]; then
@@ -291,23 +208,15 @@ show_status() {
         echo -e "  Agent binary:  ${DIM}not installed${RESET}"
     fi
 
-    if [ -f "${INSTALL_DIR}/${SERVER_BIN}" ]; then
-        echo -e "  Server binary: ${GREEN}installed${RESET}  (${INSTALL_DIR}/${SERVER_BIN})"
-    else
-        echo -e "  Server binary: ${DIM}not installed${RESET}"
-    fi
-
     if [ "$DETECTED_OS" = "linux" ] && command -v systemctl &>/dev/null; then
         echo ""
-        for svc in ip-hijack-agent ip-hijack-server; do
-            if systemctl is-active "$svc" &>/dev/null; then
-                echo -e "  ${svc}: ${GREEN}running${RESET}"
-            elif [ -f "${SERVICE_DIR}/${svc}.service" ]; then
-                echo -e "  ${svc}: ${YELLOW}stopped${RESET}"
-            else
-                echo -e "  ${svc}: ${DIM}not configured${RESET}"
-            fi
-        done
+        if systemctl is-active ip-hijack-agent &>/dev/null; then
+            echo -e "  ip-hijack-agent: ${GREEN}running${RESET}"
+        elif [ -f "${SERVICE_DIR}/ip-hijack-agent.service" ]; then
+            echo -e "  ip-hijack-agent: ${YELLOW}stopped${RESET}"
+        else
+            echo -e "  ip-hijack-agent: ${DIM}not configured${RESET}"
+        fi
     fi
 
     echo ""
@@ -328,23 +237,19 @@ main_menu() {
     echo -e "  ${BOLD}Select an option:${RESET}"
     echo ""
     echo -e "    ${CYAN}1)${RESET}  Install Agent"
-    echo -e "    ${CYAN}2)${RESET}  Install Server"
-    echo -e "    ${CYAN}3)${RESET}  Install Both (Agent + Server)"
-    echo -e "    ${CYAN}4)${RESET}  Update installed components"
-    echo -e "    ${CYAN}5)${RESET}  Uninstall"
-    echo -e "    ${CYAN}6)${RESET}  Show Status"
+    echo -e "    ${CYAN}2)${RESET}  Update Agent"
+    echo -e "    ${CYAN}3)${RESET}  Uninstall Agent"
+    echo -e "    ${CYAN}4)${RESET}  Show Status"
     echo -e "    ${CYAN}0)${RESET}  Exit"
     echo ""
-    prompt "Enter choice [1-6, 0]: "
+    prompt "Enter choice [1-4, 0]: "
     read -r choice
 
     case "$choice" in
         1) check_root; install_agent ;;
-        2) check_root; install_server ;;
-        3) check_root; install_agent; install_server ;;
-        4) check_root; update ;;
-        5) check_root; uninstall ;;
-        6) show_status ;;
+        2) check_root; update ;;
+        3) check_root; uninstall ;;
+        4) show_status ;;
         0) echo "  Bye."; exit 0 ;;
         *) error "Invalid choice"; exit 1 ;;
     esac
@@ -354,12 +259,11 @@ main_menu() {
     echo ""
 }
 
-# Allow direct actions: ./install.sh install-agent, ./install.sh uninstall, etc.
+# Allow direct actions: ./install.sh install, ./install.sh uninstall, etc.
 case "${1:-}" in
-    install-agent)  check_root; detect_arch; install_agent ;;
-    install-server) check_root; detect_arch; install_server ;;
-    update)         check_root; detect_arch; update ;;
-    uninstall)      check_root; detect_arch; uninstall ;;
-    status)         detect_arch; show_status ;;
-    *)              main_menu ;;
+    install)    check_root; detect_arch; install_agent ;;
+    update)     check_root; detect_arch; update ;;
+    uninstall)  check_root; detect_arch; uninstall ;;
+    status)     detect_arch; show_status ;;
+    *)          main_menu ;;
 esac
