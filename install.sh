@@ -6,7 +6,7 @@
 set -e
 
 REPO="hivecassiny/ip-hijack-bin"
-BASE_URL="https://raw.githubusercontent.com/${REPO}/main/bin"
+BASE_URL="https://raw.githubusercontent.com/${REPO}/main/bin/v${VERSION}"
 INSTALL_DIR="/usr/local/bin"
 SERVICE_DIR="/etc/systemd/system"
 AGENT_BIN="ip-hijack-agent"

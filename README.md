@@ -118,7 +118,7 @@ sudo ./install.sh uninstall
 
 ```bash
 # 以 linux/amd64 为例，其他架构替换文件名即可
-wget https://raw.githubusercontent.com/hivecassiny/ip-hijack-bin/main/bin/agent-linux-amd64
+wget https://raw.githubusercontent.com/hivecassiny/ip-hijack-bin/main/bin/v1.0.0/agent-linux-amd64
 chmod +x agent-linux-amd64
 sudo mv agent-linux-amd64 /usr/local/bin/ip-hijack-agent
 ```
