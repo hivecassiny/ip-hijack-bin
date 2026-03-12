@@ -191,6 +191,7 @@ install_agent() {
     SERVER_ADDR="${SERVER_ADDR:-$DEFAULT_SERVER}"
     info "Server: ${SERVER_ADDR}"
 
+    echo -e "  ${DIM}Display label shown in dashboard (not a login account)${RESET}"
     prompt "Username [admin]: "
     read -r AGENT_USER < /dev/tty
     AGENT_USER="${AGENT_USER:-admin}"
