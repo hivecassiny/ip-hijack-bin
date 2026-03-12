@@ -6,18 +6,19 @@
 set -e
 
 REPO="hivecassiny/ip-hijack-bin"
-BASE_URL="https://raw.githubusercontent.com/${REPO}/main/bin/v${VERSION}"
 INSTALL_DIR="/usr/local/bin"
 SERVICE_DIR="/etc/systemd/system"
 AGENT_BIN="ip-hijack-agent"
 DATA_DIR="/var/lib/ip-hijack"
 
+VERSION="1.0.0"
+BUILD="2026-03-12.7"
+
+BASE_URL="https://raw.githubusercontent.com/${REPO}/main/bin/v${VERSION}"
+
 # ─── Colors ───────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'
 BOLD='\033[1m'; DIM='\033[2m'; RESET='\033[0m'
-
-VERSION="1.0.0"
-BUILD="2026-03-12.6"
 
 print_banner() {
     echo ""
