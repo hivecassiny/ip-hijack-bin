@@ -132,8 +132,15 @@ UNIT
 
         systemctl daemon-reload
         systemctl enable ip-hijack-agent
-        systemctl start ip-hijack-agent
-        info "Service created and started"
+        systemctl start ip-hijack-agent || true
+        sleep 1
+        if systemctl is-active ip-hijack-agent &>/dev/null; then
+            info "Service created and started"
+        else
+            warn "Service created but failed to start. Recent logs:"
+            echo ""
+            journalctl -u ip-hijack-agent --no-pager -n 10 2>/dev/null || systemctl status ip-hijack-agent --no-pager 2>/dev/null || true
+        fi
         echo ""
         echo -e "  ${DIM}Manage with:${RESET}"
         echo -e "    systemctl status  ip-hijack-agent"
