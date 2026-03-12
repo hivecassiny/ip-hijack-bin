@@ -93,18 +93,18 @@ install_agent() {
 
     echo ""
     prompt "Server address (e.g. 1.2.3.4:9000): "
-    read -r SERVER_ADDR
+    read -r SERVER_ADDR < /dev/tty
     if [ -z "$SERVER_ADDR" ]; then
         error "Server address is required"
         exit 1
     fi
 
     prompt "Username [admin]: "
-    read -r AGENT_USER
+    read -r AGENT_USER < /dev/tty
     AGENT_USER="${AGENT_USER:-admin}"
 
     prompt "Enable compression? [Y/n]: "
-    read -r COMP
+    read -r COMP < /dev/tty
     COMP="${COMP:-Y}"
     local compress_flag="-compress=true"
     if [[ "$COMP" =~ ^[nN] ]]; then
@@ -170,7 +170,7 @@ uninstall() {
 
     echo ""
     prompt "Also remove data (UUID) in ${DATA_DIR}? [y/N]: "
-    read -r RM_DATA
+    read -r RM_DATA < /dev/tty
     if [[ "$RM_DATA" =~ ^[yY] ]]; then
         rm -rf "$DATA_DIR"
         info "Removed ${DATA_DIR}"
@@ -243,7 +243,7 @@ main_menu() {
     echo -e "    ${CYAN}0)${RESET}  Exit"
     echo ""
     prompt "Enter choice [1-4, 0]: "
-    read -r choice
+    read -r choice < /dev/tty
 
     case "$choice" in
         1) check_root; install_agent ;;
