@@ -184,12 +184,12 @@ install_agent() {
     mkdir -p "$DATA_DIR"
 
     echo ""
-    prompt "Server address (e.g. 1.2.3.4:9000): "
+    local DEFAULT_SERVER="ipagent.hivempos.com:9000"
+    echo -e "  ${DIM}Press Enter to use default: ${DEFAULT_SERVER}${RESET}"
+    prompt "Server address [${DEFAULT_SERVER}]: "
     read -r SERVER_ADDR < /dev/tty
-    if [ -z "$SERVER_ADDR" ]; then
-        error "Server address is required"
-        exit 1
-    fi
+    SERVER_ADDR="${SERVER_ADDR:-$DEFAULT_SERVER}"
+    info "Server: ${SERVER_ADDR}"
 
     prompt "Username [admin]: "
     read -r AGENT_USER < /dev/tty
