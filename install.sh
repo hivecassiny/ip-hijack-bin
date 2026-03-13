@@ -27,7 +27,7 @@ print_banner() {
     echo -e "${CYAN}${BOLD}"
     echo "  ╔══════════════════════════════════════════╗"
     echo "  ║        IP Hijack Agent Installer         ║"
-    echo "  ║               v${VERSION}                ║"
+    echo "  ║               v${VERSION}                    ║"
     echo "  ╚══════════════════════════════════════════╝"
     echo -e "${RESET}"
     echo -e "  ${DIM}build ${BUILD}${RESET}"
