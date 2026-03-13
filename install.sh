@@ -11,7 +11,7 @@ SERVICE_DIR="/etc/systemd/system"
 AGENT_BIN="ip-hijack-agent"
 DATA_DIR="/var/lib/ip-hijack"
 
-VERSION="1.0.3"
+VERSION="1.0.4"
 BUILD="2026-03-13"
 
 BASE_URL="https://raw.githubusercontent.com/${REPO}/main/bin/v${VERSION}"
