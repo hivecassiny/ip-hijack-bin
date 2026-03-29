@@ -11,7 +11,7 @@ SERVICE_DIR="/etc/systemd/system"
 AGENT_BIN="ip-hijack-agent"
 DATA_DIR="/var/lib/ip-hijack"
 
-VERSION="1.0.5"
+VERSION="1.0.6"
 BUILD="2026-03-13"
 
 
